@@ -4,24 +4,30 @@ A Steam-style game launcher that is **one single HTML file**. No install, no ser
 
 **▶ Play it here: https://andreasgraykristoffersen.github.io/gamebox/**
 
-## 48 games — every one of them different
+## 70 games — every one of them different
 
-No duplicate cards, no filler. Each entry in the store is its own game with its own code.
+No duplicate cards, no filler. Each entry in the store is its own game with its own code, and all the artwork is drawn in code (no emoji).
 
 | | | | |
 |---|---|---|---|
-| 🐍 Snake Dash | 🧱 Brick Buster | 🚀 Rocket Flap | 👾 Star Blaster |
-| 🟦 Tetra Stack | 🔢 2048 Merge | 🐼 Critter Memory | ⭕ Tic Tac Duel |
-| 🐹 Mole Smash | 🏓 Pong Duel | 🦖 Dino Dash | ⛏️ Block Craft |
-| 🍄 Jump Kingdom | 🗡️ Hero Quest | 🏎️ Turbo Racer | 💥 Tank Duel |
-| 🌀 Maze Runner | ☄️ Rock Dodger | 🎵 Copy Cat | 🧩 Slide Puzzle |
-| 🎯 Target Blitz | 🏗️ Tower Stacker | 🐸 Road Cross | 🪨 Asteroid Field |
-| ☁️ Sky Hopper | 💎 Gem Crush | 💣 Mine Finder | 🔴 Four in a Row |
-| 📦 Box Pusher | 🎨 Flood It | 🔤 Word Guess | 🚁 Cave Flyer |
-| 🍬 Candy Clicker | 🖌️ Paint Studio | 🏒 Air Hockey | 🏰 Tower Defense |
-| 🫧 Bubble Pop | 🎶 Beat Tapper | 🎣 Big Catch | 🔡 Mini Sudoku |
-| 🟡 Chomp Maze | ⛳ Mini Golf | 🍉 Fruit Slice | 🚀 City Defense |
-| 💡 Lights Out | ⚫ Checkers | ⌨️ Typing Rush | ⚽ Penalty Kicks |
+| Snake Dash | Brick Buster | Rocket Flap | Star Blaster |
+| Tetra Stack | 2048 Merge | Critter Memory | Tic Tac Duel |
+| Mole Smash | Pong Duel | Dino Dash | Block Craft |
+| Jump Kingdom | Hero Quest | Turbo Racer | Tank Duel |
+| Maze Runner | Rock Dodger | Copy Cat | Slide Puzzle |
+| Target Blitz | Tower Stacker | Road Cross | Asteroid Field |
+| Sky Hopper | Gem Crush | Mine Finder | Four in a Row |
+| Box Pusher | Flood It | Word Guess | Cave Flyer |
+| Candy Clicker | Paint Studio | Air Hockey | Tower Defense |
+| Bubble Pop | Beat Tapper | Big Catch | Mini Sudoku |
+| Chomp Maze | Mini Golf | Fruit Slice | City Defense |
+| Lights Out | Checkers | Typing Rush | Penalty Kicks |
+| Pinball | Moon Lander | Bomb Maze | Ten Pin Bowling |
+| Twenty-One | Dots & Boxes | Math Blitz | Snakes & Ladders |
+| Picture Logic | Tower Puzzle | Code Breaker | Reversi |
+| Last Stick | Dice Poker | Press Your Luck | Card War |
+| Crazy Eights | Golf Solitaire | Word Search | Word Scramble |
+| Buzzer Beater | Darts |
 
 **Block Craft** is a proper sandbox: mine blocks, build towers, dig caves, find coal and gold, watch day turn to night — and the world saves itself when you leave.
 
