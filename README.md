@@ -6,7 +6,7 @@ A Steam-style game launcher that is **one single HTML file**. No install, no ser
 
 ## What's inside
 
-**35 hand-built games**, plus themed variant packs built on top of them — **1985 games in the store** in total.
+**40 hand-built game engines**, plus themed variant packs with real rule twists on top — **2380 games in the store** in total.
 
 Every variant is a real, different game: its own speed, board size, rules, colours and characters. Nothing is a dead card.
 
