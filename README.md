@@ -29,12 +29,18 @@ Every variant is a real, different game: its own speed, board size, rules, colou
 
 **Block Craft** is a proper little sandbox: mine blocks, build towers, dig caves, find coal and gold, watch day turn to night — and the world saves itself when you leave.
 
-## Two-player games
+## Play online against a friend 🌐
 
-- **Tank Duel** and **Air Hockey** — two people on one keyboard.
-- **Tank Duel** also has a *Two Windows* mode: open GameBox twice on the same computer and the two windows play each other.
+**Tank Duel** and **Air Hockey** can be played against a friend anywhere in the world:
 
-Real over-the-internet multiplayer needs a server, which a plain HTML file can't do — so this is same-computer play.
+1. Both of you open https://andreasgraykristoffersen.github.io/gamebox/
+2. Start Tank Duel or Air Hockey and pick **🌐 Online vs a Friend**
+3. One of you taps **Make a Room** and reads out the 4-letter code
+4. The other taps **Join a Room**, types the code, and you're playing
+
+The two browsers talk **directly to each other** over WebRTC — the game data doesn't go through any game server. A free public PeerJS broker is used only for the tiny "find each other" handshake (it sees a random room code, nothing else). No accounts, no sign-up, no chat.
+
+Also available: **Same Screen** (two players, one keyboard) and, for Tank Duel, **Two Windows** on one computer.
 
 ## Features
 
