@@ -215,6 +215,110 @@ function makeApi(stage){
   return api;
 }
 
+/* ============ ONLINE PLAY (WebRTC peer-to-peer + room codes) ============ */
+function loadPeer(cb){
+  if(window.Peer)return cb(true);
+  var s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+  s.onload=function(){cb(!!window.Peer)};
+  s.onerror=function(){cb(false)};
+  document.head.appendChild(s);
+}
+function makeNet(){
+  var peer=null,conn=null,onMsg=null;
+  function wire(c,st){
+    conn=c;
+    c.on('data',function(d){if(onMsg)onMsg(d)});
+    c.on('open',function(){st('ready')});
+    c.on('close',function(){st('lost')});
+    c.on('error',function(e){st('error',(e&&e.type)||'error')})}
+  return {
+    host:function(code,st){
+      peer=new window.Peer('gbx-'+code,{debug:0});
+      peer.on('open',function(){st('waiting')});
+      peer.on('connection',function(c){wire(c,st)});
+      peer.on('error',function(e){st('error',(e&&e.type)||'error')})},
+    join:function(code,st){
+      peer=new window.Peer(null,{debug:0});
+      peer.on('open',function(){wire(peer.connect('gbx-'+code,{serialization:'json'}),st)});
+      peer.on('error',function(e){st('error',(e&&e.type)||'error')})},
+    onData:function(fn){onMsg=fn},
+    send:function(o){try{if(conn&&conn.open)conn.send(o)}catch(e){}},
+    close:function(){try{if(conn)conn.close()}catch(e){}
+      try{if(peer)peer.destroy()}catch(e){}}
+  };
+}
+/* opts: {blurb, local:fn, lan:fn|null, online:fn(role,net)} */
+function netUI(a,opts){
+  var box=a.div('dg');box.style.maxWidth='560px';
+  var info=document.createElement('div');
+  info.style.cssText='text-align:center;color:#8fa9bf;line-height:1.65;font-size:14px';
+  info.innerHTML=opts.blurb;box.appendChild(info);
+  var row=document.createElement('div');
+  row.className='row';row.style.justifyContent='center';row.style.flexWrap='wrap';
+  box.appendChild(row);
+  var status=document.createElement('div');
+  status.style.cssText='text-align:center;color:#66c0f4;font-size:15px;min-height:28px;line-height:1.5';
+  box.appendChild(status);
+  function btn(txt,cls,fn){
+    var b=document.createElement('button');b.className='btn'+(cls?' '+cls:'');
+    b.textContent=txt;b.onclick=fn;row.appendChild(b);return b}
+  function menu(){
+    row.innerHTML='';status.innerHTML='';
+    btn('🎮 Same Screen','',function(){box.remove();opts.local()});
+    btn('🌐 Online vs a Friend','alt',function(){online()});
+    if(opts.lan)btn('🪟 Two Windows','alt',function(){box.remove();opts.lan()})}
+  function online(){
+    row.innerHTML='';status.textContent='Getting the online bit ready…';
+    loadPeer(function(ok){
+      if(!ok){status.innerHTML='Could not load online play.<br>Check your internet, then try again.';
+        return menu()}
+      status.innerHTML='One of you makes a room, the other joins with the code.';
+      btn('➕ Make a Room','',makeRoom);
+      btn('🔑 Join a Room','alt',joinRoom);
+      btn('← Back','alt',menu)})}
+  function code4(){
+    var C='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';
+    for(var i=0;i<4;i++)s+=C[Math.random()*C.length|0];
+    return s}
+  function go(role,net){box.remove();opts.online(role,net)}
+  function makeRoom(){
+    row.innerHTML='';
+    var code=code4(),net=makeNet();a.onQuit(net.close);
+    status.innerHTML='<div style="font-size:13px;color:#8fa9bf">Tell your friend this code:</div>'+
+      '<div style="font-size:46px;font-weight:800;letter-spacing:10px;color:#ffd43b">'+code+'</div>'+
+      '<div style="font-size:13px;color:#8fa9bf">Waiting for them to join…</div>';
+    net.host(code,function(st,why){
+      if(st==='ready')go('host',net);
+      if(st==='error'){net.close();
+        status.innerHTML='That room would not open ('+why+').<br>Try making another one.';
+        row.innerHTML='';btn('➕ Try again','',makeRoom);btn('← Back','alt',menu)}})}
+  function joinRoom(){
+    row.innerHTML='';status.innerHTML='Type your friend\'s 4-letter code:';
+    var line=document.createElement('div');
+    line.className='row';line.style.justifyContent='center';box.appendChild(line);
+    var inp=document.createElement('input');
+    inp.placeholder='CODE';inp.maxLength=4;inp.autocapitalize='characters';
+    inp.style.cssText='width:160px;text-align:center;font-size:30px;letter-spacing:8px;'+
+      'text-transform:uppercase;background:#0a1016;border:1px solid #2a3b4d;color:#e8f1f8;'+
+      'border-radius:10px;padding:8px 6px;outline:none';
+    line.appendChild(inp);
+    var go2=document.createElement('button');go2.className='btn';go2.textContent='Join';
+    line.appendChild(go2);
+    go2.onclick=function(){
+      var code=(inp.value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+      if(code.length<4){status.textContent='Type all 4 letters of the code.';return}
+      var net=makeNet();a.onQuit(net.close);
+      status.textContent='Knocking on room '+code+'…';
+      net.join(code,function(st,why){
+        if(st==='ready'){line.remove();go('guest',net)}
+        if(st==='error'||st==='lost'){net.close();
+          status.innerHTML='Could not join room '+code+'.<br>Check the code and that your friend made the room.'}})};
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter')go2.onclick()});
+    setTimeout(function(){inp.focus()},50)}
+  menu();
+}
+
 /* ============ GAMES ============ */
 var GAMES=[
 /* --- 1. SNAKE --- */
@@ -971,7 +1075,7 @@ var GAMES=[
 
 /* --- 16. TANK DUEL (2 players / two windows) --- */
 {id:'tank',title:'Tank Duel',genre:'2 Player',icon:'💥',online:true,c1:'#ffb84d',c2:'#3d2606',
- desc:'Two players! Share one keyboard, or open GameBox in a second window on this computer and duel across them. First to 5 hits wins.',
+ desc:'Two players! Share one keyboard, or play a friend anywhere in the world with a room code. First to 5 hits wins.',
  play:function(a){
   var cfg=this.cfg||{},NWALL=cfg.walls||9,WIN=cfg.win||5;
   var W=660,H=430,c=a.canvas(W,H),x=c.getContext('2d');
@@ -1023,17 +1127,41 @@ var GAMES=[
     x.fillStyle='#ff8fa3';x.textAlign='right';x.fillText(s2,W-16,30);
     if(role==='guest'||role==='host'){x.fillStyle='#8fa9bf';x.font='12px sans-serif';
       x.textAlign='center';x.fillText(peer?('Connected — you are '+(role==='host'?'BLUE':'RED')):'Waiting for the other window...',W/2,22)}}
-  var menu=a.div('dg');
-  menu.innerHTML='<div style="text-align:center;color:#8fa9bf;max-width:440px;line-height:1.6">'+
-    '<b style="color:#e8f1f8;font-size:17px">How do you want to duel?</b><br>'+
-    'Same keyboard: <b>WASD + F</b> vs <b>Arrows + Enter</b>.<br>'+
-    'Two windows: open this file again in another window and pick the same option there.</div>';
-  var rowd=document.createElement('div');rowd.className='row';rowd.style.justifyContent='center';
-  menu.appendChild(rowd);
-  function mkb(txt,fn){var b=document.createElement('button');b.className='btn';b.textContent=txt;
-    b.onclick=fn;rowd.appendChild(b)}
-  mkb('🎮 Same Keyboard',function(){menu.remove();startLocal()});
-  mkb('🪟 Two Windows',function(){menu.remove();startNet()});
+  netUI(a,{
+    blurb:'<b style="color:#e8f1f8;font-size:17px">How do you want to duel?</b><br>'+
+      '<b>Same Screen</b> — two of you on one keyboard: WASD + F vs Arrows + Enter.<br>'+
+      '<b>Online vs a Friend</b> — one of you makes a room code, the other types it in. '+
+      'Works anywhere in the world.<br>'+
+      '<b>Two Windows</b> — two windows on this same computer.',
+    local:startLocal,lan:startLan,online:startOnline});
+  function startOnline(role,net){
+    var over=false;
+    net.onData(function(m){
+      if(role==='host'){if(m.k)last=m.k}
+      else{
+        if(m.w)walls=m.w;
+        if(m.a){t1.x=m.a[0];t1.y=m.a[1];t1.a=m.a[2];t2.x=m.b[0];t2.y=m.b[1];t2.a=m.b[2];
+          shots=m.s.map(function(q){return{x:q[0],y:q[1],b:0}});
+          s1=m.p[0];s2=m.p[1];a.score(Math.max(s1,s2)*100,{P1:s1,P2:s2})}
+        if(m.over&&!over){over=true;
+          a.over(Math.max(s1,s2)*100,m.over)}}});
+    if(role==='host')net.send({w:walls});
+    a.hint('You are the <b>'+(role==='host'?'BLUE':'RED')+'</b> tank. '+
+      'Arrows / buttons to drive, Space to fire.');
+    a.dpad('full','FIRE');a.score(0,{P1:0,P2:0});
+    var acc=0,wasRunning=true;
+    a.loop(function(dt){
+      var me=keysFor(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ']);
+      if(role==='host'){
+        physics(dt,me,{f:last.f||0,t:last.t||0,fire:!!last.fire});
+        if(wasRunning&&!running){wasRunning=false;
+          net.send({over:(s1>=WIN?'🔵 BLUE WINS!':'🔴 RED WINS!'),p:[s1,s2]});return}
+        acc+=dt;
+        if(acc>.045){acc=0;
+          net.send({a:[t1.x,t1.y,t1.a],b:[t2.x,t2.y,t2.a],
+            s:shots.map(function(q){return[q.x,q.y]}),p:[s1,s2]})}
+      }else{acc+=dt;if(acc>.045){acc=0;net.send({k:me})}}
+      draw()})}
   function startLocal(){
     role='local';
     a.hint('P1 (blue): W A S D + F to fire &nbsp;·&nbsp; P2 (red): Arrow keys + Enter to fire');
@@ -1042,8 +1170,8 @@ var GAMES=[
       physics(dt,keysFor(['w','s','a','d','f']),
                  keysFor(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter']));
       draw()})}
-  function startNet(){
-    if(!window.BroadcastChannel){a.hint('This browser cannot do two-window play. Use Same Keyboard.');return startLocal()}
+  function startLan(){
+    if(!window.BroadcastChannel){a.hint('This browser cannot do two-window play. Use Same Screen.');return startLocal()}
     net=new BroadcastChannel('gamebox-tank');
     a.onQuit(function(){try{net.postMessage({t:'bye',id:myId});net.close()}catch(e){}});
     role='host';
@@ -1746,39 +1874,45 @@ var GAMES=[
 
 /* --- 35. AIR HOCKEY (2 player) --- */
 {id:'hockey',title:'Air Hockey',genre:'2 Player',icon:'🏒',c1:'#4dd2ff',c2:'#06283d',online:true,
- desc:'Two players on one screen. Smack the puck past the other side. First to 7 goals takes it.',
+ desc:'Two players: share one screen, or play a friend anywhere in the world with a room code. First to 7 goals wins.',
  play:function(a){
   var W=420,H=620,c=a.canvas(W,H),x=c.getContext('2d');
   var p1={x:W/2,y:H-70},p2={x:W/2,y:70},pk={x:W/2,y:H/2,vx:0,vy:-150},s1=0,s2=0,R=26,PR=32;
+  var mode='local',mine=null,over=false;
+  function clampP(p,bottom){
+    p.x=Math.max(PR,Math.min(W-PR,p.x));
+    p.y=bottom?Math.max(H/2+PR,Math.min(H-PR,p.y)):Math.max(PR,Math.min(H/2-PR,p.y))}
   c.addEventListener('pointermove',function(e){
+    if(!e.buttons&&e.pointerType==='touch')return;
     var r=c.getBoundingClientRect();
     var mx=(e.clientX-r.left)/r.width*W,my=(e.clientY-r.top)/r.height*H;
-    var t=my>H/2?p1:p2;t.x=mx;t.y=my});
-  a.hint('P1 (blue, bottom): W A S D &nbsp;·&nbsp; P2 (pink, top): arrow keys &nbsp;·&nbsp; or drag with a finger on each half');
-  a.score(0,{P1:0,P2:0});
-  a.loop(function(dt){
-    var sp=330;
-    if(a.key('a'))p1.x-=sp*dt; if(a.key('d'))p1.x+=sp*dt;
-    if(a.key('w'))p1.y-=sp*dt; if(a.key('s'))p1.y+=sp*dt;
-    if(a.key('ArrowLeft'))p2.x-=sp*dt; if(a.key('ArrowRight'))p2.x+=sp*dt;
-    if(a.key('ArrowUp'))p2.y-=sp*dt; if(a.key('ArrowDown'))p2.y+=sp*dt;
-    p1.x=Math.max(PR,Math.min(W-PR,p1.x));p1.y=Math.max(H/2+PR,Math.min(H-PR,p1.y));
-    p2.x=Math.max(PR,Math.min(W-PR,p2.x));p2.y=Math.max(PR,Math.min(H/2-PR,p2.y));
+    if(mode==='local'){var t=my>H/2?p1:p2;t.x=mx;t.y=my}
+    else{var q=mine==='p1'?p1:p2;q.x=mx;q.y=my;clampP(q,mine==='p1')}});
+  function keysMove(p,set,dt,bottom){
+    var sp=340;
+    if(a.key(set[0]))p.x-=sp*dt; if(a.key(set[1]))p.x+=sp*dt;
+    if(a.key(set[2]))p.y-=sp*dt; if(a.key(set[3]))p.y+=sp*dt;
+    clampP(p,bottom)}
+  function simPuck(dt){
     pk.x+=pk.vx*dt;pk.y+=pk.vy*dt;pk.vx*=.999;pk.vy*=.999;
     if(pk.x<R){pk.x=R;pk.vx=-pk.vx} if(pk.x>W-R){pk.x=W-R;pk.vx=-pk.vx}
     [p1,p2].forEach(function(p){
       var d=Math.hypot(pk.x-p.x,pk.y-p.y);
       if(d<R+PR){var ang=Math.atan2(pk.y-p.y,pk.x-p.x);
         pk.x=p.x+Math.cos(ang)*(R+PR);pk.y=p.y+Math.sin(ang)*(R+PR);
-        var sp2=Math.max(260,Math.hypot(pk.vx,pk.vy)*1.05);
+        var sp2=Math.max(270,Math.hypot(pk.vx,pk.vy)*1.05);
         pk.vx=Math.cos(ang)*sp2;pk.vy=Math.sin(ang)*sp2}});
     if(pk.y<R||pk.y>H-R){
-      var goal=Math.abs(pk.x-W/2)<80;
-      if(goal){if(pk.y<R)s1++;else s2++;a.score(Math.max(s1,s2)*100,{P1:s1,P2:s2});
-        if(s1>=7)return a.over(700,'🔵 PLAYER 1 WINS!');
-        if(s2>=7)return a.over(700,'🩷 PLAYER 2 WINS!');
-        pk={x:W/2,y:H/2,vx:0,vy:(pk.y<R?150:-150)}}
+      if(Math.abs(pk.x-W/2)<80){
+        var top=pk.y<R;
+        if(top)s1++;else s2++;
+        a.score(Math.max(s1,s2)*100,{P1:s1,P2:s2});
+        pk={x:W/2,y:H/2,vx:0,vy:top?150:-150};
+        if(s1>=7)return '🔵 BLUE WINS!';
+        if(s2>=7)return '🩷 PINK WINS!'}
       else{pk.y=pk.y<R?R:H-R;pk.vy=-pk.vy}}
+    return null}
+  function draw(label){
     x.fillStyle='#0d2233';x.fillRect(0,0,W,H);
     x.strokeStyle='#1d4a66';x.lineWidth=3;
     x.beginPath();x.moveTo(0,H/2);x.lineTo(W,H/2);x.stroke();
@@ -1788,7 +1922,48 @@ var GAMES=[
     x.fillStyle='#ff8fa3';x.beginPath();x.arc(p2.x,p2.y,PR,0,7);x.fill();
     x.fillStyle='#ffe066';x.beginPath();x.arc(pk.x,pk.y,R,0,7);x.fill();
     x.fillStyle='#22384f';x.font='bold 26px monospace';x.textAlign='center';
-    x.fillText(s2,30,H/2-16);x.fillText(s1,30,H/2+38)});
+    x.fillText(s2,30,H/2-16);x.fillText(s1,30,H/2+38);
+    if(label){x.fillStyle='#8fa9bf';x.font='12px sans-serif';x.fillText(label,W/2,H/2-14)}}
+  netUI(a,{
+    blurb:'<b style="color:#e8f1f8;font-size:17px">Air Hockey</b><br>'+
+      '<b>Same Screen</b> — blue uses W A S D, pink uses the arrow keys (or a finger each).<br>'+
+      '<b>Online vs a Friend</b> — one makes a room code, the other types it in.',
+    local:startLocal,online:startOnline});
+  function startLocal(){
+    mode='local';
+    a.hint('Blue (bottom): W A S D &nbsp;·&nbsp; Pink (top): arrow keys &nbsp;·&nbsp; or drag a finger on each half');
+    a.score(0,{P1:0,P2:0});
+    a.loop(function(dt){
+      keysMove(p1,['a','d','w','s'],dt,true);
+      keysMove(p2,['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'],dt,false);
+      var w=simPuck(dt);
+      draw();
+      if(w)a.over(700,w)})}
+  function startOnline(role,net){
+    mode='net';mine=role==='host'?'p1':'p2';
+    net.onData(function(m){
+      if(role==='host'){if(m.p)  {p2.x=m.p[0];p2.y=m.p[1];clampP(p2,false)}}
+      else{
+        if(m.a){p1.x=m.a[0];p1.y=m.a[1];pk.x=m.k[0];pk.y=m.k[1];
+          s1=m.s[0];s2=m.s[1];a.score(Math.max(s1,s2)*100,{P1:s1,P2:s2})}
+        if(m.over&&!over){over=true;a.over(700,m.over)}}});
+    a.hint('You are the <b>'+(role==='host'?'BLUE paddle at the bottom':'PINK paddle at the top')+
+      '</b>. Move with the arrow keys or drag with your finger.');
+    a.score(0,{P1:0,P2:0});
+    var acc=0;
+    a.loop(function(dt){
+      var me=mine==='p1'?p1:p2;
+      keysMove(me,['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'],dt,mine==='p1');
+      if(role==='host'){
+        var w=simPuck(dt);
+        acc+=dt;
+        if(acc>.04){acc=0;net.send({a:[p1.x,p1.y],k:[pk.x,pk.y],s:[s1,s2]})}
+        draw('online');
+        if(w){net.send({over:w,s:[s1,s2]});a.over(700,w)}
+      }else{
+        acc+=dt;
+        if(acc>.04){acc=0;net.send({p:[p2.x,p2.y]})}
+        draw('online')}})}
  }}
 ];
 
